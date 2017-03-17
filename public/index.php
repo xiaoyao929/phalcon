@@ -1,10 +1,11 @@
 <?php
 
-use \Phalcon\Loader;
+use Phalcon\Loader;
 use Phalcon\DI\FactoryDefault;
-use \Phalcon\Mvc\View;
-use \Phalcon\Mvc\Url;
-use \Phalcon\Mvc\Application;
+use Phalcon\Mvc\View;
+use Phalcon\Mvc\View\Engine\Volt;
+use Phalcon\Mvc\Url;
+use Phalcon\Mvc\Application;
 use Phalcon\Db\Adapter\Pdo\Mysql;
 
 try {
@@ -17,14 +18,45 @@ try {
     ))->register();
 
     //Create a DI
-    $di = new FactoryDefault();
+    if(php_sapi_name()=="cli"){
+        $di = new CliDI();
+    }else{
+        $di = new FactoryDefault();
+    }
 
-    //Setup the view component
-    $di->set('view', function(){
-        $view = new View();
-        $view->setViewsDir('../app/views/');
-        return $view;
-    });
+    $di = new FactoryDefault();
+    // var_dump($di);die;
+    $di->set(
+        "voltService",
+        function ($view, $di) {
+            $volt = new Volt($view, $di);
+            $volt->setOptions(
+                [
+                    "compiledPath"      => "../app/cache/",
+                    "compiledExtension" => ".compiled",
+                ]
+
+            );
+            return $volt;
+        }
+    );
+
+    // Register Volt as template engine
+    $di->set(
+        "view",
+        function () {
+            $view = new View();
+            $view->setViewsDir("../app/views/");
+            $view->registerEngines(
+                [
+                    ".phtml" => "voltService",
+                ]
+            );
+
+            return $view;
+        }
+    );
+
 
     //Setup a base URI so that all generated URIs include the "tutorial" folder
     $di->set('url', function(){
@@ -39,7 +71,7 @@ try {
             "host" => "localhost",
             "username" => "root",
             "password" => "123456",
-            "dbname" => "phalcon"
+            "dbname" => "newhg"
         ));
     });
 
